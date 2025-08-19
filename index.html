@@ -208,62 +208,78 @@ Kukira aku yang mengelilingimu, tapi ternyata kaulah pusatku. Dimanapun kamu ber
 
     wrap.addEventListener('click', openLetter);
     wrap.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openLetter(); } });
+// --- KODE BARU UNTUK FADE AUDIO (VERSI IOS-COMPATIBLE) ---
+const bgm = document.getElementById('bgm');
+const playBtn = document.getElementById('playBtn');
+let playing = false;
+let fadeInterval;
 
-  // --- KODE BARU UNTUK FADE AUDIO ---
-  const bgm = document.getElementById('bgm');
-  const playBtn = document.getElementById('playBtn');
-  let playing = false;
-  let fadeInterval;
+const fadeDuration = 1000;
+const fadeStep = 50;
+const volumeStep = fadeStep / fadeDuration;
 
-  const fadeDuration = 1000;
-  const fadeStep = 50;
-  const volumeStep = fadeStep / fadeDuration;
+const audioFadeIn = () => {
+  clearInterval(fadeInterval);
+  playBtn.disabled = true; // Langsung nonaktifkan tombol
 
-  const audioFadeIn = () => {
-    clearInterval(fadeInterval);
-    bgm.volume = 0;
-    bgm.play();
-    playing = true;
-    playBtn.textContent = 'Pause';
-    playBtn.disabled = true;
+  // Panggil .play() dan tangani Promise-nya
+  const playPromise = bgm.play();
 
-    fadeInterval = setInterval(() => {
-      if (bgm.volume < 0.8) {
-        bgm.volume = Math.min(0.8, bgm.volume + volumeStep);
-      } else {
-        clearInterval(fadeInterval);
-        playBtn.disabled = false;
-      }
-    }, fadeStep);
-  };
+  if (playPromise !== undefined) {
+    playPromise.then(() => {
+      // ---- HANYA JIKA PLAY BERHASIL ----
+      bgm.volume = 0; // Set volume ke 0 setelah play berhasil
+      playing = true;
+      playBtn.textContent = 'Pause';
 
-  const audioFadeOut = () => {
-    clearInterval(fadeInterval);
-    playBtn.disabled = true;
+      fadeInterval = setInterval(() => {
+        if (bgm.volume < 0.8) {
+          bgm.volume = Math.min(0.8, bgm.volume + volumeStep);
+        } else {
+          clearInterval(fadeInterval);
+          playBtn.disabled = false; // Aktifkan tombol setelah fade selesai
+        }
+      }, fadeStep);
+    }).catch(error => {
+      // Jika .play() gagal, reset UI dan jangan lakukan apa-apa
+      console.error("Audio play ditolak oleh browser:", error);
+      playBtn.disabled = false; // Aktifkan lagi tombolnya
+      playBtn.textContent = 'Play';
+      playing = false;
+    });
+  }
+};
 
-    fadeInterval = setInterval(() => {
-      if (bgm.volume > 0.0) {
-        bgm.volume = Math.max(0, bgm.volume - volumeStep);
-      } else {
-        bgm.pause();
-        playing = false;
-        playBtn.textContent = 'Play';
-        clearInterval(fadeInterval);
-        playBtn.disabled = false;
-      }
-    }, fadeStep);
-  };
-  
-  playBtn.addEventListener('click', () => {
+const audioFadeOut = () => {
+  clearInterval(fadeInterval);
+  playBtn.disabled = true;
+
+  fadeInterval = setInterval(() => {
+    if (bgm.volume > 0.0) {
+      bgm.volume = Math.max(0, bgm.volume - volumeStep);
+    } else {
+      bgm.pause(); // Pause audio setelah volume 0
+      playing = false;
+      playBtn.textContent = 'Play';
+      clearInterval(fadeInterval);
+      playBtn.disabled = false;
+    }
+  }, fadeStep);
+};
+
+playBtn.addEventListener('click', () => {
+  // Cek `readyState` untuk memastikan audio sudah bisa diputar
+  if (bgm.readyState >= 2) { 
     if (!playing) {
       audioFadeIn();
     } else {
       audioFadeOut();
     }
-  });
+  }
+});
 
-  // Jika user membuka surat, coba putar musik (dengan fade-in)
-  wrap.addEventListener('click', ()=>{ if(!playing) audioFadeIn(); });
+// Event listener untuk amplop tetap sama, akan memanggil audioFadeIn yang sudah robust
+wrap.addEventListener('click', () => { if (!playing && bgm.readyState >= 2) audioFadeIn(); });
   </script>
 </body>
 </html>
