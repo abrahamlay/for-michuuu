@@ -131,7 +131,7 @@
     <span id="trackLabel">Instrumental Lembut</span>
     <audio id="bgm" preload="auto" loop>
       <!-- Bebas ganti URL audio di bawah ini dengan file kamu sendiri -->
-      <source src="https://cdn.pixabay.com/download/audio/2022/03/15/audio_3e6ecfba45.mp3?filename=calm-lofi-ambient-112191.mp3" type="audio/mpeg" />
+      <source src="music.mp3" type="audio/mpeg" />
     </audio>
   </div>
 
@@ -209,24 +209,61 @@ Kukira aku yang mengelilingimu, tapi ternyata kaulah pusatku. Dimanapun kamu ber
     wrap.addEventListener('click', openLetter);
     wrap.addEventListener('keydown', (e)=>{ if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openLetter(); } });
 
-    // Music control
-    const bgm = document.getElementById('bgm');
-    const playBtn = document.getElementById('playBtn');
-    let playing = false;
+  // --- KODE BARU UNTUK FADE AUDIO ---
+  const bgm = document.getElementById('bgm');
+  const playBtn = document.getElementById('playBtn');
+  let playing = false;
+  let fadeInterval;
 
-    const tryPlay = async () => {
-      try{
-        await bgm.play(); playing = true; playBtn.textContent = 'Pause';
-      }catch(err){ /* autoplay blocked until user gesture */ }
+  const fadeDuration = 1000;
+  const fadeStep = 50;
+  const volumeStep = fadeStep / fadeDuration;
+
+  const audioFadeIn = () => {
+    clearInterval(fadeInterval);
+    bgm.volume = 0;
+    bgm.play();
+    playing = true;
+    playBtn.textContent = 'Pause';
+    playBtn.disabled = true;
+
+    fadeInterval = setInterval(() => {
+      if (bgm.volume < 0.8) {
+        bgm.volume = Math.min(0.8, bgm.volume + volumeStep);
+      } else {
+        clearInterval(fadeInterval);
+        playBtn.disabled = false;
+      }
+    }, fadeStep);
+  };
+
+  const audioFadeOut = () => {
+    clearInterval(fadeInterval);
+    playBtn.disabled = true;
+
+    fadeInterval = setInterval(() => {
+      if (bgm.volume > 0.0) {
+        bgm.volume = Math.max(0, bgm.volume - volumeStep);
+      } else {
+        bgm.pause();
+        playing = false;
+        playBtn.textContent = 'Play';
+        clearInterval(fadeInterval);
+        playBtn.disabled = false;
+      }
+    }, fadeStep);
+  };
+  
+  playBtn.addEventListener('click', () => {
+    if (!playing) {
+      audioFadeIn();
+    } else {
+      audioFadeOut();
     }
+  });
 
-    playBtn.addEventListener('click', async ()=>{
-      if(!playing){ await bgm.play(); playing = true; playBtn.textContent = 'Pause'; }
-      else{ bgm.pause(); playing = false; playBtn.textContent = 'Play'; }
-    });
-
-    // If user opens letter, try to start music (counts as gesture)
-    wrap.addEventListener('click', ()=>{ if(!playing) tryPlay(); });
+  // Jika user membuka surat, coba putar musik (dengan fade-in)
+  wrap.addEventListener('click', ()=>{ if(!playing) audioFadeIn(); });
   </script>
 </body>
 </html>
